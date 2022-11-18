@@ -153,13 +153,19 @@ class TestHomework:
     def test_bot_init_not_global(self):
         import homework
 
-        assert not (hasattr(homework, 'bot') and isinstance(getattr(homework, 'bot'), telegram.Bot)), (
+        assert not (
+            hasattr(
+                homework, 'bot'
+            )
+            and isinstance(getattr(homework, 'bot'), telegram.Bot)), (
             'Убедитесь, что бот инициализирован только в main()'
         )
 
     def test_logger(self, monkeypatch, random_timestamp):
         def mock_telegram_bot(*args, **kwargs):
-            return MockTelegramBot(*args, random_timestamp=random_timestamp, **kwargs)
+            return MockTelegramBot(
+                *args, random_timestamp=random_timestamp, **kwargs
+            )
 
         monkeypatch.setattr(telegram, "Bot", mock_telegram_bot)
 
@@ -171,7 +177,9 @@ class TestHomework:
 
     def test_send_message(self, monkeypatch, random_timestamp):
         def mock_telegram_bot(*args, **kwargs):
-            return MockTelegramBot(*args, random_timestamp=random_timestamp, **kwargs)
+            return MockTelegramBot(
+                *args, random_timestamp=random_timestamp, **kwargs
+            )
 
         monkeypatch.setattr(telegram, "Bot", mock_telegram_bot)
 
