@@ -1,17 +1,18 @@
 import logging
 import os
+import requests
 import sys
+import telegram
 import time
 
-from http import HTTPStatus
-from logging import Formatter, StreamHandler
 
-import requests
-import telegram
 from dotenv import load_dotenv
 from exceptions import (
     EndpointError, EndpointStatusError, NotForSendingError, SendMessageError
 )
+from http import HTTPStatus
+from logging import Formatter, StreamHandler
+
 
 load_dotenv()
 
@@ -21,6 +22,9 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 RETRY_TIME = 480
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
+ERROR_BY_SENDING = (
+    f'Ошибка при отправке сообщения: {telegram.error.TelegramError}'
+)
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
 HOMEWORK_STATUSES = {
@@ -44,9 +48,9 @@ def send_message(bot, message):
     """Отправляет сообщения в Telegram."""
     try:
         bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
-    except telegram.error.TelegramError as error:
-        logger.error(f'Ошибка при отправке сообщения: {error}', exc_info=True)
-        raise SendMessageError(f'Ошибка при отправке сообщения: {error}')
+    except telegram.error.TelegramError:
+        logger.error(ERROR_BY_SENDING, exc_info=True)
+        raise SendMessageError(ERROR_BY_SENDING)
 
 
 def get_api_answer(current_timestamp):
