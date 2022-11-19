@@ -1,18 +1,16 @@
 import logging
 import os
-import requests
 import sys
-import telegram
 import time
-
-
-from dotenv import load_dotenv
-from exceptions import (
-    EndpointError, EndpointStatusError, NotForSendingError, SendMessageError
-)
 from http import HTTPStatus
 from logging import Formatter, StreamHandler
 
+import requests
+import telegram
+from dotenv import load_dotenv
+
+from exceptions import (EndpointError, EndpointStatusError, NotForSendingError,
+                        SendMessageError)
 
 load_dotenv()
 
@@ -55,56 +53,48 @@ def send_message(bot, message):
 
 def get_api_answer(current_timestamp):
     """Делает запрос к API сервиса Практикум.Домашка."""
-    timestamp = current_timestamp or int(time.time())
-    params = {'from_date': timestamp}
+    PARAMS = {'from_date': current_timestamp or int(time.time())}
+    ADDRESS_NOT_AVAILABLE = (
+        f'Адрес {ENDPOINT} c параметрами: {PARAMS} недоступен'
+    )
+    ERROR_BY_REQUEST_TO_ENDPOINT = (
+        f'Проблема при обращении к {ENDPOINT}.'
+        'Ошибка {requests.exceptions.RequestException}'
+    )
     try:
-        api_response = requests.get(ENDPOINT, headers=HEADERS, params=params)
+        api_response = requests.get(ENDPOINT, headers=HEADERS, params=PARAMS)
         if api_response.status_code != HTTPStatus.OK:
-            logger.error(
-                f'Адрес {ENDPOINT} c параметрами: {params} недоступен'
-            )
-            raise EndpointStatusError(
-                f'Адрес {ENDPOINT} c параметрами: {params} недоступен'
-            )
+            logger.error(ADDRESS_NOT_AVAILABLE)
+            raise EndpointStatusError(ADDRESS_NOT_AVAILABLE)
         return api_response.json()
-    except requests.exceptions.RequestException as error:
-        logger.error(
-            f'Проблема при обращении к {ENDPOINT}.Ошибка {error}',
-            exc_info=True
-        )
-        raise EndpointError(
-            f'Проблема при обращении к {ENDPOINT}.Ошибка {error}'
-        )
+    except requests.exceptions.RequestException:
+        logger.error(ERROR_BY_REQUEST_TO_ENDPOINT, exc_info=True)
+        raise EndpointError(ERROR_BY_REQUEST_TO_ENDPOINT)
 
 
 def check_response(response):
     """Проверяет ответ API на корректность."""
+    API_RESPONSE_NOT_DICT_TYPE = (
+        f'Тип данных ответа API не является словарём: {response}'
+    )
     if not isinstance(response, dict):
-        logger.error(
-            f'Тип данных ответа API не является словарём: {response}'
-        )
-        raise TypeError(
-            f'Тип данных ответа API не является словарём: {response}'
-        )
+        logger.error(API_RESPONSE_NOT_DICT_TYPE)
+        raise TypeError(API_RESPONSE_NOT_DICT_TYPE)
     elif 'homeworks' not in response:
-        logger.error(
+        HOMEWORK_KEY_NOT_IN_API_RESPONSE = (
             'Ключ homeworks отсутствует в ответе API.'
             f'Ключи ответа: {response.keys()}'
         )
-        raise KeyError(
-            'Ключ homeworks отсутствует в ответе API.'
-            f'Ключи ответа: {response.keys()}'
-        )
+        logger.error(HOMEWORK_KEY_NOT_IN_API_RESPONSE)
+        raise KeyError(HOMEWORK_KEY_NOT_IN_API_RESPONSE)
     homeworks = response['homeworks']
     if not isinstance(homeworks, list):
-        logger.error(
+        TYPE_OF_HOMEWORKS_KEY_NOT_LIST_TYPE = (
             'Тип данных значения по ключу homeworks не является списком: '
             f'{homeworks}'
         )
-        raise TypeError(
-            'Тип данных значения по ключу homeworks не является списком: '
-            f'{homeworks}'
-        )
+        logger.error(TYPE_OF_HOMEWORKS_KEY_NOT_LIST_TYPE)
+        raise TypeError(TYPE_OF_HOMEWORKS_KEY_NOT_LIST_TYPE)
     elif not homeworks:
         logger.debug('Статус проверки домашнего задания не обновлялся')
         return homeworks
@@ -114,26 +104,22 @@ def check_response(response):
 def parse_status(homework):
     """Достает статус проверки домашнего задания."""
     for key in ('homework_name', 'status'):
+        REQUIRED_KEY_FOR_STATUS_DETERMING_MISSED = (
+            'Отсутствует необходимый ключ для определения статуса '
+            f'проверки домашнего задания: {key}'
+        )
         if key not in homework:
-            logger.error(
-                'Отсутствует необходимый ключ для определения статуса '
-                f'проверки домашнего задания: {key}'
-            )
-            raise KeyError(
-                'Отсутствует необходимый ключ для определения статуса '
-                f'проверки домашнего задания: {key}'
-            )
+            logger.error(REQUIRED_KEY_FOR_STATUS_DETERMING_MISSED)
+            raise KeyError(REQUIRED_KEY_FOR_STATUS_DETERMING_MISSED)
     homework_name = homework['homework_name']
     homework_status = homework['status']
     if homework_status not in HOMEWORK_STATUSES:
-        logger.error(
+        UNDOCUMENTED_HOMEWORKS_CHECK_STATUS = (
             'Незадокументированный статус проверки домашней работы: '
             f'{homework_status}'
         )
-        raise KeyError(
-            'Незадокументированный статус проверки домашней работы: '
-            f'{homework_status}'
-        )
+        logger.error(UNDOCUMENTED_HOMEWORKS_CHECK_STATUS)
+        raise KeyError(UNDOCUMENTED_HOMEWORKS_CHECK_STATUS)
     verdict = HOMEWORK_STATUSES[homework_status]
     return f'Изменился статус проверки работы "{homework_name}": {verdict}'
 
